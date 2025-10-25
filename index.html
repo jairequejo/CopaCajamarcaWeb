@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="shortcut icon" href="favicon.ico">
+    <title>Copa Cajamarca - Gestión de Torneos</title>
+    <link rel="stylesheet" href="styles.css">
+    
+</head>
+<body>
+    <div class="main-container">
+
+        <div class="panel panel-left">
+            <h2>Gestión de Equipos</h2>
+            
+            <div class="input-group">
+                <label for="nombreEquipo">Nombre del Equipo:</label>
+                <input type="text" id="nombreEquipo" placeholder="Ej: JR Stars">
+            </div>
+            
+            <div class="input-group">
+                <label for="urlFoto">URL de la Foto (Opcional):</label>
+                <input type="text" id="urlFoto" placeholder="https://ejemplo.com/logo.png">
+            </div>
+            
+            <button id="btnAgregarEquipo">➕ Agregar Equipo</button>
+            
+            <hr>
+            
+            <h2>Puntuación</h2>
+            <div class="puntos-config">
+                <div class="puntos-item">
+                    <label for="ptsVictoria">Victoria:</label>
+                    <input type="number" id="ptsVictoria" value="3" min="0">
+                </div>
+                <div class="puntos-item">
+                    <label for="ptsEmpate">Empate:</label>
+                    <input type="number" id="ptsEmpate" value="1" min="0">
+                </div>
+                <div class="puntos-item">
+                    <label for="ptsDerrota">Derrota:</label>
+                    <input type="number" id="ptsDerrota" value="0" min="0">
+                </div>
+            </div>
+
+            <button id="btnGenerarPartidos">⚽ Generar Fixture Round Robin</button>
+            <button id="btnLimpiarDatos">🧹 Limpiar Todos los Datos</button>
+        </div>
+
+        <div class="panel panel-center">
+            <h2>Fixture</h2>
+            <div class="input-group">
+                <label for="filtroJornada">Filtrar por Jornada:</label>
+                <select id="filtroJornada">
+                    <option value="all">Todas las jornadas</option>
+                </select>
+            </div>
+            
+            <table id="tablaPartidos">
+                <thead>
+                    <tr>
+                        <th>Jornada</th>
+                        <th>Local</th>
+                        <th>Visitante</th>
+                        <th>Resultado</th>
+                        <th>Acción</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    </tbody>
+            </table>
+        </div>
+
+        <div class="panel panel-right">
+            <h2>Tabla de Posiciones</h2>
+            <table id="tablaRanking">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Equipo</th>
+                        <th>PJ</th>
+                        <th>PG</th>
+                        <th>PE</th>
+                        <th>PP</th>
+                        <th>GF</th>
+                        <th>GC</th>
+                        <th>DG</th>
+                        <th>Pts</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    </tbody>
+            </table>
+        </div>
+    </div>
+    
+    <div id="modalDialog" class="modal">
+        <div class="modal-content">
+            <span class="close-button">&times;</span>
+            <h3>Registrar Resultado</h3>
+            <p id="dialogNombres"></p>
+            <div class="input-result">
+                <input type="number" id="dialogGolesLocal" placeholder="Goles Local" min="0">
+                <input type="number" id="dialogGolesVisitante" placeholder="Goles Visitante" min="0">
+            </div>
+            <button id="btnGuardarResultado">Guardar</button>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
