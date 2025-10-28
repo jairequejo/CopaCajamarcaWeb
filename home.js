@@ -42,7 +42,7 @@ document.addEventListener('DOMContentLoaded', () => {
             torneoEl.innerHTML = `
                 <span class="torneo-nombre">${torneo.nombre}</span>
                 <div class="torneo-acciones">
-                    <button class="btn-accion btn-ver" title="Ver Torneo">👁️</button>
+                    <button class="btn-accion btn-ver" title="Ver Torneo">🏆</button>
                     <button class="btn-accion btn-editar" title="Editar Datos">Editar</button>
                 </div>
             `;
