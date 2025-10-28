@@ -1,330 +1,432 @@
-// ====================================================================
-// 1. DATA MODELOS Y UTILIDADES (Reemplaza clases C#)
-// ====================================================================
+document.addEventListener('DOMContentLoaded', () => {
 
-// Cargar datos de localStorage o usar valores por defecto
-let equipos = JSON.parse(localStorage.getItem('equipos')) || [];
-let fixture = JSON.parse(localStorage.getItem('fixture')) || [];
-let ptsConfig = JSON.parse(localStorage.getItem('ptsConfig')) || { V: 3, E: 1, D: 0 };
+    // ====================================================================
+    // 1. MODELO DE DATOS Y VARIABLES GLOBALES
+    // ====================================================================
 
-// ====================================================================
-// 2. LÓGICA DE ALMACENAMIENTO Y UI
-// ====================================================================
+    let baseDeDatosCopa = JSON.parse(localStorage.getItem('baseDeDatosCopa')) || [];
+    let torneoActual = null;
+    let categoriaActual = null;
+    let idTorneoUrl = null;
 
-function guardarDatos() {
-    localStorage.setItem('equipos', JSON.stringify(equipos));
-    localStorage.setItem('fixture', JSON.stringify(fixture));
-    localStorage.setItem('ptsConfig', JSON.stringify(ptsConfig));
-}
+    // --- Elementos del DOM ---
+    const selectCategoria = document.getElementById('selectCategoria');
+    const nombreTorneoActual = document.getElementById('nombreTorneoActual');
+    const tablaRankingBody = document.getElementById('tablaRanking').querySelector('tbody');
+    const tablaPartidosBody = document.getElementById('tablaPartidos').querySelector('tbody');
+    const filtroJornada = document.getElementById('filtroJornada');
 
-function actualizarUI() {
-    generarTablaRanking();
-    generarTablaPartidos();
-    generarFiltroJornadas();
-    
-    // Restaurar configuración de puntos en la UI
-    document.getElementById('ptsVictoria').value = ptsConfig.V;
-    document.getElementById('ptsEmpate').value = ptsConfig.E;
-    document.getElementById('ptsDerrota').value = ptsConfig.D;
-}
+    // ====================================================================
+    // 2. INICIALIZACIÓN Y CARGA DE DATOS
+    // ====================================================================
 
-// ====================================================================
-// 3. EVENTOS DEL PANEL IZQUIERDO (Equipos y Configuración)
-// ====================================================================
+    function inicializar() {
+        // Leer el ID del torneo desde la URL
+        const params = new URLSearchParams(window.location.search);
+        idTorneoUrl = params.get('id');
 
-document.getElementById('btnAgregarEquipo').addEventListener('click', () => {
-    const nombre = document.getElementById('nombreEquipo').value.trim();
-    const foto = document.getElementById('urlFoto').value.trim();
+        if (!idTorneoUrl) {
+            alert("No se especificó un torneo. Volviendo al inicio.");
+            window.location.href = 'index.html';
+            return;
+        }
 
-    if (!nombre) {
-        alert("El nombre del equipo no puede estar vacío.");
-        return;
+        // Encontrar el torneo en nuestra BD
+        torneoActual = baseDeDatosCopa.find(t => t.id === idTorneoUrl);
+
+        if (!torneoActual) {
+            alert("Torneo no encontrado. Volviendo al inicio.");
+            window.location.href = 'index.html';
+            return;
+        }
+
+        // Rellenar datos del torneo
+        nombreTorneoActual.textContent = torneoActual.nombre;
+        
+        // Rellenar el dropdown de categorías
+        selectCategoria.innerHTML = '<option value="">Seleccione una Categoría</option>';
+        torneoActual.categorias.forEach(cat => {
+            const option = document.createElement('option');
+            option.value = cat.nombre;
+            option.textContent = `Categoría ${cat.nombre}`;
+            selectCategoria.appendChild(option);
+        });
+        
+        // Limpiar UI
+        limpiarUI();
     }
-    if (equipos.some(e => e.nombre.toLowerCase() === nombre.toLowerCase())) {
-        alert("El equipo ya existe.");
-        return;
+
+    // --- Evento principal: Cambiar de Categoría ---
+    selectCategoria.addEventListener('change', () => {
+        const nombreCat = selectCategoria.value;
+        if (nombreCat) {
+            categoriaActual = torneoActual.categorias.find(c => c.nombre === nombreCat);
+            // Mostrar la categoría seleccionada en el input de agregar equipo
+            document.getElementById('categoriaEquipo').value = nombreCat;
+            actualizarUI();
+        } else {
+            categoriaActual = null;
+            limpiarUI();
+        }
+    });
+
+    // ====================================================================
+    // 3. LÓGICA DE ALMACENAMIENTO Y UI
+    // ====================================================================
+
+    function guardarDatos() {
+        // Encontrar el índice de nuestro torneo actual
+        const index = baseDeDatosCopa.findIndex(t => t.id === torneoActual.id);
+        if (index !== -1) {
+            // Reemplazar el objeto antiguo con el nuevo
+            baseDeDatosCopa[index] = torneoActual;
+        }
+        // Guardar TODA la base de datos
+        localStorage.setItem('baseDeDatosCopa', JSON.stringify(baseDeDatosCopa));
     }
 
-    const nuevoEquipo = {
-        id: Date.now(), // ID simple para equipos
-        nombre,
-        foto,
-        // Estadísticas (se reinician en el cálculo)
-        pj: 0, pg: 0, pe: 0, pp: 0, gf: 0, gc: 0, dg: 0, pts: 0
+    // Actualiza todo basándose en "categoriaActual"
+    function actualizarUI() {
+        if (!categoriaActual) {
+            limpiarUI();
+            return;
+        }
+        generarTablaRanking();
+        generarTablaPartidos();
+        generarFiltroJornadas();
+    }
+
+    function limpiarUI() {
+        tablaRankingBody.innerHTML = '';
+        tablaPartidosBody.innerHTML = '';
+        filtroJornada.innerHTML = '<option value="all">Todas las jornadas</option>';
+        document.getElementById('categoriaEquipo').value = '';
+    }
+
+    // ====================================================================
+    // 4. EVENTOS PANEL IZQUIERDO (Equipos y Categorías)
+    // ====================================================================
+
+    document.getElementById('btnAgregarEquipo').addEventListener('click', () => {
+        if (!torneoActual) return; // No hay torneo cargado
+
+        const nombre = document.getElementById('nombreEquipo').value.trim();
+        const foto = document.getElementById('urlFoto').value.trim();
+        const catNombre = document.getElementById('categoriaEquipo').value.trim();
+
+        if (!nombre || !catNombre) {
+            alert("El Nombre y la Categoría (Año) son obligatorios.");
+            return;
+        }
+
+        // 1. Buscar si la categoría ya existe en ESTE torneo
+        let categoria = torneoActual.categorias.find(c => c.nombre === catNombre);
+
+        // 2. Si no existe, la creamos
+        if (!categoria) {
+            categoria = {
+                nombre: catNombre,
+                equipos: [],
+                fixture: []
+            };
+            torneoActual.categorias.push(categoria);
+            
+            // Añadirla al dropdown <select>
+            const option = document.createElement('option');
+            option.value = categoria.nombre;
+            option.textContent = `Categoría ${categoria.nombre}`;
+            selectCategoria.appendChild(option);
+            
+            alert(`Nueva categoría ${catNombre} creada.`);
+        }
+
+        // 3. Verificar que el equipo no exista EN ESA CATEGORÍA
+        if (categoria.equipos.some(e => e.nombre.toLowerCase() === nombre.toLowerCase())) {
+            alert("El equipo ya existe en esta categoría.");
+            return;
+        }
+
+        // 4. Crear y agregar el equipo a la categoría
+        const nuevoEquipo = {
+            id: `eq_${Date.now()}`,
+            nombre,
+            foto,
+            pj: 0, pg: 0, pe: 0, pp: 0, gf: 0, gc: 0, dg: 0, pts: 0
+        };
+        categoria.equipos.push(nuevoEquipo);
+
+        // 5. Guardar TODA la base de datos
+        guardarDatos();
+
+        // 6. Si la categoría recién agregada es la que está seleccionada, refrescar la UI
+        if (categoriaActual && categoriaActual.nombre === catNombre) {
+            actualizarUI();
+        } else {
+            // Seleccionar automáticamente la categoría
+            selectCategoria.value = catNombre;
+            categoriaActual = categoria;
+            actualizarUI();
+        }
+        
+        document.getElementById('nombreEquipo').value = '';
+        document.getElementById('urlFoto').value = '';
+    });
+
+    document.getElementById('btnGenerarPartidos').addEventListener('click', () => {
+        if (!categoriaActual) {
+            alert("Primero debe seleccionar una categoría.");
+            return;
+        }
+        if (categoriaActual.equipos.length < 2) {
+            alert("Se necesitan al menos 2 equipos en esta categoría para generar el fixture.");
+            return;
+        }
+        
+        // Genera el fixture SOLO para esa categoría
+        categoriaActual.fixture = generarFixtureRoundRobin([...categoriaActual.equipos]); 
+        
+        guardarDatos();
+        actualizarUI();
+    });
+
+    document.getElementById('btnLimpiarDatos').addEventListener('click', () => {
+        if (!categoriaActual) {
+            alert("Primero debe seleccionar una categoría.");
+            return;
+        }
+        
+        if (confirm(`¿Estás seguro de que quieres LIMPIAR TODOS los equipos y partidos de la CATEGORÍA ${categoriaActual.nombre}?`)) {
+            categoriaActual.equipos = [];
+            categoriaActual.fixture = [];
+            guardarDatos();
+            actualizarUI();
+        }
+    });
+
+
+    // ====================================================================
+    // 5. LÓGICA CENTRAL (Fixture y Ranking)
+    // ====================================================================
+
+    function generarFixtureRoundRobin(listaEquipos) {
+        let lista = [...listaEquipos];
+        let partidos = [];
+        let jornada = 1;
+
+        if (lista.length % 2 !== 0) {
+            lista.push(null); // Equipo fantasma
+        }
+        
+        const numEquipos = lista.length;
+        const numJornadas = numEquipos - 1;
+        const partidosPorJornada = numEquipos / 2;
+
+        for (let j = 0; j < numJornadas; j++) {
+            for (let i = 0; i < partidosPorJornada; i++) {
+                const local = lista[i];
+                const visitante = lista[numEquipos - 1 - i];
+
+                if (local && visitante) {
+                    partidos.push({
+                        id: `p_${Date.now()}_${Math.random()}`,
+                        jornada: j + 1,
+                        localId: local.id,
+                        visitanteId: visitante.id,
+                        localNombre: local.nombre,
+                        visitanteNombre: visitante.nombre,
+                        golesLocal: null,
+                        golesVisitante: null
+                    });
+                }
+            }
+
+            if (numEquipos > 1) {
+                const equipoQueRota = lista.pop();
+                lista.splice(1, 0, equipoQueRota);
+            }
+            jornada++;
+        }
+        return partidos;
+    }
+
+    function generarTablaRanking() {
+        if (!categoriaActual) return;
+        
+        const equipos = categoriaActual.equipos;
+        const fixture = categoriaActual.fixture;
+        const ptsConfig = torneoActual.ptsConfig; // ¡Usa la config del torneo!
+
+        // 1. Resetear estadísticas
+        equipos.forEach(e => {
+            e.pj = e.pg = e.pe = e.pp = e.gf = e.gc = e.dg = e.pts = 0;
+        });
+
+        // 2. Procesar partidos
+        fixture.filter(p => p.golesLocal !== null && p.golesVisitante !== null).forEach(p => {
+            const local = equipos.find(e => e.id === p.localId);
+            const visitante = equipos.find(e => e.id === p.visitanteId);
+
+            if (!local || !visitante) return;
+
+            const gl = p.golesLocal;
+            const gv = p.golesVisitante;
+
+            local.pj++; visitante.pj++;
+            local.gf += gl; local.gc += gv;
+            visitante.gf += gv; visitante.gc += gl;
+
+            if (gl > gv) { // Gana Local
+                local.pg++; local.pts += ptsConfig.V;
+                visitante.pp++; visitante.pts += ptsConfig.D;
+            } else if (gv > gl) { // Gana Visitante
+                visitante.pg++; visitante.pts += ptsConfig.V;
+                local.pp++; local.pts += ptsConfig.D;
+            } else { // Empate
+                local.pe++; local.pts += ptsConfig.E;
+                visitante.pe++; visitante.pts += ptsConfig.E;
+            }
+        });
+        
+        // 3. Calcular DG y Ordenar
+        equipos.forEach(e => { e.dg = e.gf - e.gc; });
+
+        const rankingOrdenado = equipos.sort((a, b) => {
+            if (b.pts !== a.pts) return b.pts - a.pts;
+            if (b.dg !== a.dg) return b.dg - a.dg;
+            return b.gf - a.gf;
+        });
+
+        // 4. Renderizar la tabla
+        tablaRankingBody.innerHTML = '';
+        
+        rankingOrdenado.forEach((e, index) => {
+            const row = tablaRankingBody.insertRow();
+            
+            row.insertCell().textContent = index + 1;
+            
+            const teamCell = row.insertCell();
+            teamCell.classList.add('team-info');
+            if (e.foto) {
+                 teamCell.innerHTML = `<img src="${e.foto}" alt="Logo" class="team-logo" onerror="this.style.display='none'"> <span>${e.nombre}</span>`;
+            } else {
+                 teamCell.innerHTML = `<span>${e.nombre}</span>`;
+            }
+
+            row.insertCell().textContent = e.pj;
+            row.insertCell().textContent = e.pg;
+            row.insertCell().textContent = e.pe;
+            row.insertCell().textContent = e.pp;
+            row.insertCell().textContent = e.gf;
+            row.insertCell().textContent = e.gc;
+            row.insertCell().textContent = e.dg;
+            row.insertCell().textContent = e.pts;
+        });
+    }
+
+    function generarTablaPartidos() {
+        if (!categoriaActual) return;
+
+        tablaPartidosBody.innerHTML = '';
+        
+        const filtro = filtroJornada.value;
+        const partidosFiltrados = filtro === 'all' 
+            ? categoriaActual.fixture 
+            : categoriaActual.fixture.filter(p => p.jornada === parseInt(filtro));
+
+        partidosFiltrados.forEach(p => {
+            const row = tablaPartidosBody.insertRow();
+            const resultado = p.golesLocal !== null 
+                ? `${p.golesLocal} - ${p.golesVisitante}` 
+                : 'Pendiente';
+
+            row.insertCell().textContent = p.jornada;
+            row.insertCell().textContent = p.localNombre;
+            row.insertCell().textContent = p.visitanteNombre;
+            row.insertCell().textContent = resultado;
+            
+            const actionCell = row.insertCell();
+            const btnEditar = document.createElement('button');
+            btnEditar.textContent = 'Editar';
+            btnEditar.className = 'btn-editar';
+            btnEditar.onclick = () => abrirModalEdicion(p.id);
+            actionCell.appendChild(btnEditar);
+        });
+    }
+
+    function generarFiltroJornadas() {
+        if (!categoriaActual) return;
+
+        filtroJornada.innerHTML = '<option value="all">Todas las jornadas</option>';
+        const jornadas = [...new Set(categoriaActual.fixture.map(p => p.jornada))].sort((a, b) => a - b);
+        
+        jornadas.forEach(j => {
+            const option = document.createElement('option');
+            option.value = j;
+            option.textContent = `Jornada ${j}`;
+            filtroJornada.appendChild(option);
+        });
+    }
+
+    filtroJornada.addEventListener('change', generarTablaPartidos);
+
+    // ====================================================================
+    // 6. LÓGICA DEL MODAL DE RESULTADOS
+    // ====================================================================
+
+    const modal = document.getElementById('modalDialog');
+    const closeButton = modal.querySelector('.close-button');
+    const btnGuardar = document.getElementById('btnGuardarResultado');
+    let partidoEnEdicionId = null; 
+
+    function abrirModalEdicion(partidoId) {
+        if (!categoriaActual) return;
+        
+        const partido = categoriaActual.fixture.find(p => p.id === partidoId);
+        if (!partido) return;
+
+        partidoEnEdicionId = partidoId;
+        document.getElementById('dialogNombres').textContent = `${partido.localNombre} vs ${partido.visitanteNombre}`;
+        document.getElementById('dialogGolesLocal').value = partido.golesLocal || '';
+        document.getElementById('dialogGolesVisitante').value = partido.golesVisitante || '';
+        
+        modal.style.display = 'block';
+    }
+
+    closeButton.onclick = () => {
+        modal.style.display = 'none';
     };
 
-    equipos.push(nuevoEquipo);
-    document.getElementById('nombreEquipo').value = '';
-    document.getElementById('urlFoto').value = '';
-    guardarDatos();
-    // No actualiza el ranking aquí, se actualiza después de generar el fixture o editar un partido
-    generarTablaRanking(); 
-});
+    btnGuardar.onclick = () => {
+        if (!categoriaActual) return;
+        
+        const golesL = parseInt(document.getElementById('dialogGolesLocal').value);
+        const golesV = parseInt(document.getElementById('dialogGolesVisitante').value);
 
-document.getElementById('btnGenerarPartidos').addEventListener('click', () => {
-    if (equipos.length < 2) {
-        alert("Se necesitan al menos 2 equipos para generar el fixture.");
-        return;
-    }
-    
-    // 1. Cargar la configuración de puntos antes de generar/recalcular
-    ptsConfig.V = parseInt(document.getElementById('ptsVictoria').value) || 3;
-    ptsConfig.E = parseInt(document.getElementById('ptsEmpate').value) || 1;
-    ptsConfig.D = parseInt(document.getElementById('ptsDerrota').value) || 0;
-
-    // 2. Generar el fixture
-    fixture = generarFixtureRoundRobin([...equipos]); 
-    guardarDatos();
-    actualizarUI();
-});
-
-document.getElementById('btnLimpiarDatos').addEventListener('click', () => {
-    if (confirm("¿Estás seguro de que quieres LIMPIAR TODOS los equipos y partidos?")) {
-        equipos = [];
-        fixture = [];
-        localStorage.clear();
-        actualizarUI();
-    }
-});
-
-// Actualizar ptsConfig inmediatamente al cambiar el input
-document.querySelectorAll('.puntos-config input').forEach(input => {
-    input.addEventListener('change', () => {
-        ptsConfig.V = parseInt(document.getElementById('ptsVictoria').value) || 3;
-        ptsConfig.E = parseInt(document.getElementById('ptsEmpate').value) || 1;
-        ptsConfig.D = parseInt(document.getElementById('ptsDerrota').value) || 0;
-        guardarDatos();
-        // Recalcular el ranking inmediatamente
-        generarTablaRanking(); 
-    });
-});
-
-
-// ====================================================================
-// 4. LÓGICA CENTRAL (Fixture y Ranking)
-// ====================================================================
-
-function generarFixtureRoundRobin(listaEquipos) {
-    let lista = [...listaEquipos];
-    let partidos = [];
-    let jornada = 1;
-
-    // Si es impar, añadir equipo fantasma (null)
-    if (lista.length % 2 !== 0) {
-        lista.push(null);
-    }
-    
-    const numEquipos = lista.length;
-    const numJornadas = numEquipos - 1;
-    const partidosPorJornada = numEquipos / 2;
-
-    for (let j = 0; j < numJornadas; j++) {
-        for (let i = 0; i < partidosPorJornada; i++) {
-            const local = lista[i];
-            const visitante = lista[numEquipos - 1 - i];
-
-            if (local && visitante) {
-                partidos.push({
-                    id: Date.now() + Math.random(),
-                    jornada: j + 1,
-                    localId: local.id,
-                    visitanteId: visitante.id,
-                    localNombre: local.nombre, // Simplificación para la UI
-                    visitanteNombre: visitante.nombre,
-                    golesLocal: null,
-                    golesVisitante: null
-                });
-            }
+        if (isNaN(golesL) || isNaN(golesV) || golesL < 0 || golesV < 0) {
+            alert("Por favor, ingresa un resultado válido (números >= 0).");
+            return;
         }
 
-        // Rotación: Mantiene el primer equipo fijo y rota el resto
-        if (numEquipos > 1) {
-            const equipoQueRota = lista.pop();
-            lista.splice(1, 0, equipoQueRota);
+        const partidoIndex = categoriaActual.fixture.findIndex(p => p.id === partidoEnEdicionId);
+        if (partidoIndex !== -1) {
+            categoriaActual.fixture[partidoIndex].golesLocal = golesL;
+            categoriaActual.fixture[partidoIndex].golesVisitante = golesV;
+            
+            guardarDatos();
+            actualizarUI(); // Recalcula ranking y refresca partidos
+            modal.style.display = 'none';
         }
-        jornada++;
-    }
-    return partidos;
-}
+    };
 
-function generarTablaRanking() {
-    // 1. Resetear estadísticas de los equipos
-    equipos.forEach(e => {
-        e.pj = e.pg = e.pe = e.pp = e.gf = e.gc = e.dg = e.pts = 0;
-    });
-
-    // 2. Procesar partidos
-    fixture.filter(p => p.golesLocal !== null && p.golesVisitante !== null).forEach(p => {
-        const local = equipos.find(e => e.id === p.localId);
-        const visitante = equipos.find(e => e.id === p.visitanteId);
-
-        if (!local || !visitante) return; // Error si el equipo no existe
-
-        const gl = p.golesLocal;
-        const gv = p.golesVisitante;
-
-        // PJ, GF, GC
-        local.pj++; visitante.pj++;
-        local.gf += gl; local.gc += gv;
-        visitante.gf += gv; visitante.gc += gl;
-
-        // Puntos, PG, PE, PP
-        if (gl > gv) { // Gana Local
-            local.pg++; local.pts += ptsConfig.V;
-            visitante.pp++; visitante.pts += ptsConfig.D;
-        } else if (gv > gl) { // Gana Visitante
-            visitante.pg++; visitante.pts += ptsConfig.V;
-            local.pp++; local.pts += ptsConfig.D;
-        } else { // Empate
-            local.pe++; local.pts += ptsConfig.E;
-            visitante.pe++; visitante.pts += ptsConfig.E;
+    window.onclick = (event) => {
+        if (event.target === modal) {
+            modal.style.display = 'none';
         }
-    });
-    
-    // 3. Calcular DG y Ordenar
-    equipos.forEach(e => { e.dg = e.gf - e.gc; });
+    };
 
-    const rankingOrdenado = equipos.sort((a, b) => {
-        if (b.pts !== a.pts) return b.pts - a.pts;
-        if (b.dg !== a.dg) return b.dg - a.dg;
-        return b.gf - a.gf;
-    });
+    // ====================================================================
+    // 7. INICIALIZACIÓN
+    // ====================================================================
 
-    // 4. Renderizar la tabla
-    const tbody = document.getElementById('tablaRanking').querySelector('tbody');
-    tbody.innerHTML = '';
-    
-    rankingOrdenado.forEach((e, index) => {
-        const row = tbody.insertRow();
-        
-        row.insertCell().textContent = index + 1; // Posición
-        
-        // Equipo con Logo
-        const teamCell = row.insertCell();
-        teamCell.classList.add('team-info');
-        if (e.foto) {
-             teamCell.innerHTML = `<img src="${e.foto}" alt="Logo" class="team-logo" onerror="this.style.display='none'"> <span>${e.nombre}</span>`;
-        } else {
-             teamCell.innerHTML = `<span>${e.nombre}</span>`;
-        }
-
-        row.insertCell().textContent = e.pj;
-        row.insertCell().textContent = e.pg;
-        row.insertCell().textContent = e.pe;
-        row.insertCell().textContent = e.pp;
-        row.insertCell().textContent = e.gf;
-        row.insertCell().textContent = e.gc;
-        row.insertCell().textContent = e.dg;
-        row.insertCell().textContent = e.pts;
-    });
-    
-    guardarDatos();
-}
-
-
-function generarTablaPartidos() {
-    const tbody = document.getElementById('tablaPartidos').querySelector('tbody');
-    tbody.innerHTML = '';
-    
-    const filtro = document.getElementById('filtroJornada').value;
-    const partidosFiltrados = filtro === 'all' 
-        ? fixture 
-        : fixture.filter(p => p.jornada === parseInt(filtro));
-
-    partidosFiltrados.forEach(p => {
-        const row = tbody.insertRow();
-        const resultado = p.golesLocal !== null 
-            ? `${p.golesLocal} - ${p.golesVisitante}` 
-            : 'Pendiente';
-
-        row.insertCell().textContent = p.jornada;
-        row.insertCell().textContent = p.localNombre;
-        row.insertCell().textContent = p.visitanteNombre;
-        row.insertCell().textContent = resultado;
-        
-        // Botón "Editar"
-        const actionCell = row.insertCell();
-        const btnEditar = document.createElement('button');
-        btnEditar.textContent = 'Editar';
-        btnEditar.className = 'btn-editar';
-        btnEditar.onclick = () => abrirModalEdicion(p.id);
-        actionCell.appendChild(btnEditar);
-    });
-}
-
-function generarFiltroJornadas() {
-    const select = document.getElementById('filtroJornada');
-    select.innerHTML = '<option value="all">Todas las jornadas</option>';
-
-    const jornadas = [...new Set(fixture.map(p => p.jornada))].sort((a, b) => a - b);
-    jornadas.forEach(j => {
-        const option = document.createElement('option');
-        option.value = j;
-        option.textContent = `Jornada ${j}`;
-        select.appendChild(option);
-    });
-}
-
-document.getElementById('filtroJornada').addEventListener('change', generarTablaPartidos);
-
-
-// ====================================================================
-// 5. LÓGICA DEL MODAL (ContentDialog - Reemplazo)
-// ====================================================================
-
-const modal = document.getElementById('modalDialog');
-const closeButton = modal.querySelector('.close-button');
-const btnGuardar = document.getElementById('btnGuardarResultado');
-let partidoEnEdicionId = null; 
-
-function abrirModalEdicion(partidoId) {
-    const partido = fixture.find(p => p.id === partidoId);
-    if (!partido) return;
-
-    partidoEnEdicionId = partidoId;
-    document.getElementById('dialogNombres').textContent = `${partido.localNombre} vs ${partido.visitanteNombre}`;
-    document.getElementById('dialogGolesLocal').value = partido.golesLocal || '';
-    document.getElementById('dialogGolesVisitante').value = partido.golesVisitante || '';
-    
-    modal.style.display = 'block';
-}
-
-closeButton.onclick = () => {
-    modal.style.display = 'none';
-};
-
-btnGuardar.onclick = () => {
-    const golesL = parseInt(document.getElementById('dialogGolesLocal').value);
-    const golesV = parseInt(document.getElementById('dialogGolesVisitante').value);
-
-    if (isNaN(golesL) || isNaN(golesV) || golesL < 0 || golesV < 0) {
-        alert("Por favor, ingresa un resultado válido (números >= 0).");
-        return;
-    }
-
-    // Actualizar el partido
-    const partidoIndex = fixture.findIndex(p => p.id === partidoEnEdicionId);
-    if (partidoIndex !== -1) {
-        fixture[partidoIndex].golesLocal = golesL;
-        fixture[partidoIndex].golesVisitante = golesV;
-        
-        guardarDatos();
-        generarTablaRanking(); // Recalcular todo
-        generarTablaPartidos(); // Refrescar la tabla de partidos
-        modal.style.display = 'none';
-    }
-};
-
-// Cerrar modal al hacer clic fuera
-window.onclick = (event) => {
-    if (event.target === modal) {
-        modal.style.display = 'none';
-    }
-};
-
-// ====================================================================
-// 6. INICIALIZACIÓN
-// ====================================================================
-
-// Llamar a la función de actualización al cargar la página
-window.onload = actualizarUI;
+    inicializar();
+});

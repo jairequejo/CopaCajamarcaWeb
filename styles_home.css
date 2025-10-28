@@ -1,0 +1,195 @@
+:root {
+    --color-primary: #0d6efd;
+    --color-bg: #0a192f;
+    --color-panel: #172a45;
+    --color-text: #ccd6f6;
+    --color-text-light: #8892b0;
+    --color-border: #233554;
+    --color-accent: #64ffda; /* Un acento (opcional) */
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: var(--color-bg);
+    color: var(--color-text);
+    margin: 0;
+    padding: 20px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+}
+
+.container {
+    width: 100%;
+    max-width: 600px;
+    text-align: center;
+}
+
+h1 {
+    color: white;
+    font-size: 2.5em;
+    margin-bottom: 30px;
+}
+
+.torneos-container {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.btn-torneo {
+    background-color: var(--color-panel);
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    padding: 20px;
+    text-align: left;
+    font-size: 1.2em;
+    color: var(--color-text);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.btn-torneo:hover {
+    border-color: var(--color-primary);
+    background-color: #1a3255;
+}
+
+.torneo-nombre {
+    font-weight: bold;
+}
+
+.torneo-acciones {
+    display: flex;
+    gap: 10px;
+}
+
+.torneo-acciones .btn-accion {
+    background: none;
+    border: none;
+    color: var(--color-text-light);
+    font-size: 1.2em;
+    cursor: pointer;
+    padding: 5px;
+}
+.torneo-acciones .btn-accion:hover {
+    color: white;
+}
+.torneo-acciones .btn-editar {
+    font-size: 0.8em;
+    color: var(--color-text-light);
+}
+
+.btn-nuevo {
+    font-size: 2.5em;
+    font-weight: 300;
+    text-align: center;
+    justify-content: center;
+    color: var(--color-text-light);
+    margin-top: 15px;
+}
+.btn-nuevo:hover {
+    color: white;
+}
+
+/* --- Modal --- */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0,0,0,0.7);
+    backdrop-filter: blur(3px);
+}
+
+.modal-content {
+    background-color: var(--color-panel);
+    margin: 10% auto;
+    padding: 30px;
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    width: 90%;
+    max-width: 500px;
+    position: relative;
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.6);
+}
+
+.close-button {
+    color: #aaa;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+    position: absolute;
+    top: 10px;
+    right: 15px;
+}
+
+h3 {
+    color: var(--color-primary);
+    margin-top: 0;
+    border-bottom: 1px solid var(--color-border);
+    padding-bottom: 10px;
+}
+
+.form-group {
+    margin-bottom: 15px;
+    text-align: left;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-size: 0.9em;
+    color: var(--color-text-light);
+}
+
+input[type="text"], input[type="date"], input[type="number"], select {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid var(--color-border);
+    border-radius: 4px;
+    background-color: #233554;
+    color: var(--color-text);
+    box-sizing: border-box;
+}
+
+.grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+}
+
+.puntos-config {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 10px;
+}
+.puntos-config input {
+    text-align: center;
+    font-weight: bold;
+}
+
+button {
+    background-color: var(--color-primary);
+    color: white;
+    padding: 12px 20px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    width: 100%;
+    font-size: 1em;
+    margin-top: 10px;
+}
+
+button:hover {
+    background-color: #0b5ed7;
+}

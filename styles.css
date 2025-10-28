@@ -195,3 +195,50 @@ thead th {
     width: 48%;
     display: inline-block;
 }
+/* ============================================= */
+/* AÑADIR ESTO AL FINAL DE TU styles.css       */
+/* ============================================= */
+
+.header-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: var(--color-panel);
+    padding: 10px 30px;
+    margin: -20px -20px 20px -20px; /* Expande al borde */
+    border-bottom: 2px solid var(--color-primary);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+}
+
+.header-bar h2 {
+    margin: 0;
+    color: white;
+    font-size: 1.5em;
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.back-link {
+    color: var(--color-text-light);
+    text-decoration: none;
+    font-size: 1.1em;
+    transition: color 0.2s;
+}
+.back-link:hover {
+    color: white;
+}
+
+.categoria-selector {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.categoria-selector label {
+    font-size: 0.9em;
+}
+
+.categoria-selector select {
+    width: 150px; /* Ancho fijo para el selector */
+    font-size: 1em;
+}
