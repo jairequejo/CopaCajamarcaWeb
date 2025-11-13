@@ -57,18 +57,31 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- Evento principal: Cambiar de Categoría ---
-    selectCategoria.addEventListener('change', () => {
-        const nombreCat = selectCategoria.value;
-        if (nombreCat) {
-            categoriaActual = torneoActual.categorias.find(c => c.nombre === nombreCat);
-            // Mostrar la categoría seleccionada en el input de agregar equipo
-            document.getElementById('categoriaEquipo').value = nombreCat;
-            actualizarUI();
-        } else {
-            categoriaActual = null;
-            limpiarUI();
-        }
-    });
+        selectCategoria.addEventListener('change', () => {
+            const nombreCat = selectCategoria.value;
+            if (nombreCat) {
+                categoriaActual = torneoActual.categorias.find(c => c.nombre === nombreCat);
+                
+                // --- LÓGICA ACTUALIZADA PARA GRUPOS ---
+                // Parsear el nombre de la categoría (ej: "2013 - A")
+                const partesCat = nombreCat.split(' - ');
+                const anio = partesCat[0];
+                const grupo = partesCat[1] || ''; // Obtiene el grupo o un string vacío
+
+                // Rellenar los inputs del panel izquierdo
+                document.getElementById('categoriaEquipo').value = anio;
+                document.getElementById('grupoEquipo').value = grupo;
+                // --- FIN LÓGICA ACTUALIZADA ---
+
+                actualizarUI();
+            } else {
+                categoriaActual = null;
+                // Limpiar ambos inputs
+                document.getElementById('categoriaEquipo').value = '';
+                document.getElementById('grupoEquipo').value = ''; // Añadido
+                limpiarUI();
+            }
+        });
 
     // ====================================================================
     // 3. LÓGICA DE ALMACENAMIENTO Y UI
@@ -101,6 +114,7 @@ document.addEventListener('DOMContentLoaded', () => {
         tablaPartidosBody.innerHTML = '';
         filtroJornada.innerHTML = '<option value="all">Todas las jornadas</option>';
         document.getElementById('categoriaEquipo').value = '';
+        document.getElementById('grupoEquipo').value = '';
     }
 
     // ====================================================================
@@ -112,20 +126,27 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const nombre = document.getElementById('nombreEquipo').value.trim();
         const foto = document.getElementById('urlFoto').value.trim();
-        const catNombre = document.getElementById('categoriaEquipo').value.trim();
+        const catAnio = document.getElementById('categoriaEquipo').value.trim();
+        const catGrupo = document.getElementById('grupoEquipo').value.trim().toUpperCase(); // Nuevo
 
-        if (!nombre || !catNombre) {
-            alert("El Nombre y la Categoría (Año) son obligatorios.");
-            return;
+        if (!nombre || !catAnio) { // Solo el año es obligatorio
+            alert("El Nombre del Equipo y la Categoría (Año) son obligatorios.");
+        return;
+        }
+
+        // Construir el nombre final de la categoría
+        let catNombreFinal = catAnio;
+        if (catGrupo) {
+            catNombreFinal = `${catAnio} - ${catGrupo}`;
         }
 
         // 1. Buscar si la categoría ya existe en ESTE torneo
-        let categoria = torneoActual.categorias.find(c => c.nombre === catNombre);
+        let categoria = torneoActual.categorias.find(c => c.nombre === catNombreFinal);
 
         // 2. Si no existe, la creamos
         if (!categoria) {
             categoria = {
-                nombre: catNombre,
+                nombre: catNombreFinal,
                 equipos: [],
                 fixture: []
             };
@@ -137,7 +158,7 @@ document.addEventListener('DOMContentLoaded', () => {
             option.textContent = `Categoría ${categoria.nombre}`;
             selectCategoria.appendChild(option);
             
-            alert(`Nueva categoría ${catNombre} creada.`);
+            alert(`Nueva categoría ${catNombreFinal} creada.`);
         }
 
         // 3. Verificar que el equipo no exista EN ESA CATEGORÍA
@@ -159,11 +180,11 @@ document.addEventListener('DOMContentLoaded', () => {
         guardarDatos();
 
         // 6. Si la categoría recién agregada es la que está seleccionada, refrescar la UI
-        if (categoriaActual && categoriaActual.nombre === catNombre) {
+        if (categoriaActual && categoriaActual.nombre === catNombreFinal) {
             actualizarUI();
         } else {
             // Seleccionar automáticamente la categoría
-            selectCategoria.value = catNombre;
+            selectCategoria.value = catNombreFinal;
             categoriaActual = categoria;
             actualizarUI();
         }
